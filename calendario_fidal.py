@@ -3,69 +3,62 @@ from bs4 import BeautifulSoup
 from ics import Calendar, Event
 from datetime import datetime
 import re
+import time
 
 ANNO = "2026"
-# URL Corretto al 100%: Forziamo l'anno intero (anno=2026) e chiediamo tutti i mesi (mese=99)
-url = "https://fidal.it"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+calendar = Calendar()
+conteggio_totale = 0
 
-try:
-    print("Connessione ai server FIDAL Toscana...")
-    response = requests.get(url, headers=headers)
-    response.encoding = 'utf-8'
-    soup = BeautifulSoup(response.text, 'html.parser')
+PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "u20", "u16", "u14", "coni", "giovanili", "provinciali"]
+
+# Cicliamo su tutti i 12 mesi dell'anno singolarmente per forzare la FIDAL a mostrare tutto
+for mese_num in range(1, 13):
+    url = f"https://www.fidal.it/calendario.php?&id_sito=126&submit=Invia&livello=REG&new_regione=TOSCANA&anno={ANNO}&mese={mese_num}"
+    print(f"Scraping mese {mese_num}...")
     
-    calendar = Calendar()
-    
-    PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "u20", "u16", "u14", "coni", "giovanili", "provinciali"]
-    
-    righe = soup.find_all('tr')
-    conteggio_totale = 0
-    
-    for riga in righe:
-        testo_riga = riga.get_text(" | ", strip=True)
-        if "|" in testo_riga:
-            parti = [p.strip() for p in testo_riga.split("|")]
-            
-            if len(parti) >= 3:
-                data_grezza = parti[0]
-                titolo = parti[2]
+    try:
+        response = requests.get(url, headers=headers)
+        response.encoding = 'utf-8'
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        righe = soup.find_all('tr')
+        for riga in righe:
+            colonne = riga.find_all('td')
+            if len(colonne) >= 3:
+                data_grezza = colonne[0].text.strip()
+                titolo = colonne[2].text.strip()
                 
-                # Cerchiamo tipologia e luogo nelle colonne successive
                 tipo_gara = ""
                 luogo = ""
-                for parte in parti[3:]:
-                    if parte.upper() in ["PISTA", "INDOOR", "STRADA", "CROSS", "TRAIL"]:
-                        tipo_gara = parte.upper()
-                    elif "(" in parte and ")" in parte:
-                        luogo = parte
+                for col in colonne[3:]:
+                    txt = col.text.strip().upper()
+                    if txt in ["PISTA", "INDOOR", "STRADA", "CROSS", "TRAIL"]:
+                        tipo_gara = txt
+                    elif "(" in txt and ")" in txt:
+                        luogo = col.text.strip()
 
                 titolo_lower = titolo.lower()
                 is_giovanile = any(cat in titolo_lower for cat in PAROLE_GIOVANILI)
                 
-                # Filtro: teniamo pista/indoor regionali e qualsiasi gara giovanile (anche provinciale)
                 if (tipo_gara in ["PISTA", "INDOOR"]) or is_giovanile:
-                    
-                    # Eliminiamo gare senior su strada non giovanili
                     if any(x in tipo_gara.lower() for x in ["strada", "trail", "maratona"]) and not is_giovanile:
                         continue
                         
+                    if not data_grezza or "/" not in data_grezza:
+                        continue
+                        
                     try:
-                        # Gestione range di date es. "12-13/09" -> isoliamo "12/09"
-                        giorno_mese = data_grezza
-                        if "-" in giorno_mese:
-                            parti_data = giorno_mese.split("-")
-                            # Se la struttura è del tipo 12-13/09
+                        # Gestione date composte (es. 12-13/09 -> prende il 12/09)
+                        if "-" in data_grezza:
+                            parti_data = data_grezza.split("-")
                             if "/" in parti_data[1]:
-                                mese = parti_data[1].split("/")[1]
-                                giorno_mese = f"{parti_data[0]}/{mese}"
+                                mese_estratto = parti_data[1].split("/")[1]
+                                data_grezza = f"{parti_data[0]}/{mese_estratto}"
                         
-                        # Generazione data finale pulita
-                        data_pulita = f"{giorno_mese}/{ANNO}"
-                        # Rimuove eventuali spazi o residui
-                        data_pulita = re.sub(r'[^\d/]', '', data_pulita) 
+                        data_pulita = f"{data_grezza}/{ANNO}"
+                        data_pulita = re.sub(r'[^\d/]', '', data_pulita)
                         
-                        # Controlliamo la validità della stringa data (es. deve avere due barre)
                         if data_pulita.count('/') == 2:
                             data_evento = datetime.strptime(data_pulita, "%d/%m/%Y")
                             
@@ -75,18 +68,17 @@ try:
                             if luogo:
                                 event.location = luogo
                             event.make_all_day()
-                            
                             calendar.events.add(event)
                             conteggio_totale += 1
-                    except Exception as e:
+                    except:
                         continue
+        time.sleep(0.5) # Pausa di sicurezza per non sovraccaricare il server
+    except Exception as e:
+        print(f"Errore mese {mese_num}: {e}")
 
-    with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
-        f.writelines(calendar)
-        
-    print(f"\n[SUCCESSO] Il database completo è pronto!")
-    print(f"Gare giovanili e su pista/indoor totali salvate: {conteggio_totale}")
-
-except Exception as e:
-    print(f"Errore generale: {e}")
+with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
+    f.writelines(calendar)
+    
+print(f"\n[SUCCESSO] Analisi completata per l'intero anno!")
+print(f"Gare giovanili e su pista totali salvate nel file online: {conteggio_totale}")
 
