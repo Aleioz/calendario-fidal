@@ -9,8 +9,9 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 calendar = Calendar()
 conteggio_totale = 0
 
-# Controlliamo singolarmente i mesi in cui ci sono le gare (6=Giu, 7=Lug, 9=Set, 10=Ott)
-mesi_da_controllare = [6, 7, 9, 10]
+# Definiamo i mesi come testo normale per evitare che la chat li cancelli
+mesi_testo = "6,7,9,10"
+mesi_da_controllare = mesi_testo.split(",")
 
 PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "giovanili", "coni", "provinciali"]
 ESCLUSIONI = ["master", "assoluti", "promesse"]
@@ -18,8 +19,8 @@ ESCLUSIONI = ["master", "assoluti", "promesse"]
 print("Avvio estrazione mensile dal database FIDAL Toscana...")
 
 for mese in mesi_da_controllare:
-    # L'URL cambia dinamicamente il mese a ogni ciclo
-    url = f"https://www.fidal.it/calendario.php?&id_sito=126&submit=Invia&livello=REG&new_regione=TOSCANA&anno={ANNO}&mese={mese}"
+    url = f"https://fidal.it{ANNO}&mese={mese}"
+    print(f"Lettura mese numero: {mese}")
     
     try:
         response = requests.get(url, headers=headers, timeout=15)
@@ -69,11 +70,10 @@ for mese in mesi_da_controllare:
                     conteggio_totale += 1
                 except:
                     continue
-        time.sleep(0.3) # Breve pausa antirallentamento
+        time.sleep(0.5)
     except Exception as e:
         print(f"Errore mese {mese}: {e}")
 
-# Scrittura finale del file condiviso
 with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
     f.write(calendar.serialize())
 
