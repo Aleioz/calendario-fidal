@@ -1,51 +1,60 @@
+import requests
+from bs4 import BeautifulSoup
 from ics import Calendar, Event
 from datetime import datetime
 import os
 
 calendar = Calendar()
-conteggio_totale = 0
+conteggio = 0
 
-# ✅ DATI GARE
-gare = [
-    {"data": "12/06/2026", "titolo": "Meeting Ragazzi", "luogo": "Firenze", "categoria": "ragazzi", "regione": "toscana"},
-    {"data": "15/06/2026", "titolo": "Campionati Cadetti", "luogo": "Prato", "categoria": "cadetti", "regione": "toscana"},
-    {"data": "20/06/2026", "titolo": "Trofeo Giovanile", "luogo": "Pistoia", "categoria": "allievi", "regione": "toscana"},
-    {"data": "22/06/2026", "titolo": "Meeting Master", "luogo": "Roma", "categoria": "master", "regione": "lazio"},
-]
+url = "https://www.fidal.it/calendario.php"
 
-# ✅ FILTRI
-CATEGORIE_OK = ["esordienti", "ragazzi", "cadetti", "allievi", "juniores"]
+headers = {'User-Agent': 'Mozilla/5.0'}
 
-gare_filtrate = []
+response = requests.get(url, headers=headers)
+soup = BeautifulSoup(response.text, "html.parser")
 
-for g in gare:
-    if g["regione"] != "toscana":
-        continue
-    
-    if g["categoria"] not in CATEGORIE_OK:
-        continue
+# ✅ trova tutte le righe
+righe = soup.find_all("tr")
 
-    gare_filtrate.append(g)
+for riga in righe:
+    colonne = riga.find_all("td")
 
-print("Gare filtrate:", len(gare_filtrate))
+    if len(colonne) >= 4:
+        try:
+            data = colonne[0].text.strip()
+            titolo = colonne[2].text.strip().lower()
+            luogo = colonne[4].text.strip() if len(colonne) > 4 else ""
 
-# ✅ CREAZIONE EVENTI
-for g in gare_filtrate:
-    data_evento = datetime.strptime(g["data"], "%d/%m/%Y")
+            # ✅ FILTRO GIOVANILI
+            if not any(x in titolo for x in ["ragazzi", "cadetti", "allievi", "juniores", "esordienti"]):
+                continue
 
-    evento = Event()
-    evento.name = f"{g['titolo']} ({g['categoria']})"
-    evento.begin = data_evento
-    evento.make_all_day()
-    evento.location = g["luogo"]
+            # ✅ FILTRO TOSCANA (puoi adattarlo meglio)
+            if "tosc" not in luogo.lower():
+                continue
 
-    calendar.events.add(evento)
-    conteggio_totale += 1
+            if "/" not in data:
+                continue
 
-# ✅ SALVATAGGIO
+            data_evento = datetime.strptime(data + "/2026", "%d/%m/%Y")
+
+            evento = Event()
+            evento.name = titolo
+            evento.begin = data_evento
+            evento.make_all_day()
+            evento.location = luogo
+
+            calendar.events.add(evento)
+            conteggio += 1
+
+        except:
+            continue
+
+# ✅ salva
 os.makedirs("docs", exist_ok=True)
 
 with open("docs/calendario_toscana.ics", "w", encoding="utf-8") as f:
     f.writelines(calendar)
 
-print(f"✅ Creato file docs/calendario_toscana.ics con {conteggio_totale} eventi")
+print(f"✅ Creati {conteggio} eventi automatici")
