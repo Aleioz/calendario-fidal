@@ -11,7 +11,7 @@ conteggio_totale = 0
 # Definiamo i mesi da controllare usando una lista classica (6=Giugno, 7=Luglio, 9=Settembre, 10=Ottobre)
 mesi_da_controllare = list((6, 7, 9, 10))
 
-PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "giovanili"]
+PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "giovanili", "coni", "provinciali"]
 ESCLUSIONI = ["master", "assoluti", "promesse"]
 
 print("Avvio scansione stagionale del calendario...")
@@ -27,6 +27,7 @@ for mese in mesi_da_controllare:
         righe = soup.find_all('tr')
         for riga in righe:
             colonne = riga.find_all('td')
+            # Controlliamo che la riga contenga le colonne giuste dei dati FIDAL
             if len(colonne) >= 4:
                 data_testo = colonne[0].text.strip()
                 titolo = colonne[2].text.strip()
@@ -47,6 +48,7 @@ for mese in mesi_da_controllare:
                     continue
                     
                 try:
+                    # Gestione dei giorni doppi (es. "13-14/06" -> prende solo "13/06")
                     if "-" in data_testo:
                         giorno_inizio = data_testo.split("-")[0]
                         mese_estratto = data_testo.split("/")[-1]
@@ -59,7 +61,8 @@ for mese in mesi_da_controllare:
                     event = Event()
                     event.name = f"[{tipo_gara.upper()}] {titolo}"
                     event.begin = data_evento
-                    event.location = luogo
+                    if luogo:
+                        event.location = luogo
                     event.make_all_day()
                     
                     calendar.events.add(event)
@@ -69,7 +72,8 @@ for mese in mesi_da_controllare:
     except Exception as e:
         print(f"Errore durante la lettura del mese {mese}: {e}")
 
+# Scrittura finale corretta del file .ics
 with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
-    f.writelines(calendar)
+    f.write(calendar.serialize())
 
-print(f"\n[SUCCESSO] Calendario creato con successo! Trovate {conteggio_totale} gare totali.")
+print(f"\n[SUCCESSO] Calendario creato! Trovate {conteggio_totale} gare totali.")
