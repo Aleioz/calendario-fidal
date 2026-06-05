@@ -12,10 +12,9 @@ conteggio_totale = 0
 
 PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "u20", "u16", "u14", "coni", "giovanili", "provinciali", "rag"]
 
-print(f"Inizio estrazione gare FIDAL Toscana per l'anno {ANNO_CORRENTE}...")
+print(f"Inizio estrazione gare FIDAL Toscana...")
 
 for mese_num in range(1, 13):
-    # INDIRIZZO CORRETTO AL 100% - Verificato con i parametri corretti della federazione
     url = f"https://fidal.it{ANNO_CORRENTE}&mese={mese_num}"
     print(f"Controllo mese {mese_num}...")
     
@@ -51,14 +50,13 @@ for mese_num in range(1, 13):
                         continue
                         
                     try:
-                        # Gestione dei giorni doppi (es. 14-15/06 -> prende il 14/06)
+                        # Gestione corretta dei giorni doppi (es. "14-15/06" -> prende solo "14/06")
                         if "-" in data_grezza:
-                            frazioni = data_grezza.split("-")
-                            if "/" in frazioni[0]:
-                                data_grezza = frazioni[0]
-                            elif "/" in frazioni[1]:
-                                mese_estratto = frazioni[1].split("/")[-1]
-                                data_grezza = f"{frazioni[0]}/{mese_estratto}"
+                            parti_trattino = data_grezza.split("-")
+                            # Se la struttura è 14-15/06, estraiamo il mese "06" dal secondo pezzo
+                            if "/" in parti_trattino[1]:
+                                mese_estratto = parti_trattino[1].split("/")[-1]
+                                data_grezza = f"{parti_trattino[0]}/{mese_estratto}"
                         
                         parti_barra = data_grezza.split("/")
                         giorno = int(re.sub(r'[^\d]', '', parti_barra[0]))
@@ -77,11 +75,10 @@ for mese_num in range(1, 13):
                         conteggio_totale += 1
                     except:
                         continue
-        time.sleep(0.3)
+        time.sleep(0.2)
     except Exception as e:
-        print(f"Errore durante il controllo del mese {mese_num}: {e}")
+        print(f"Errore mese {mese_num}: {e}")
 
-# Scrittura finale sul file condiviso
 with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
     f.write(calendar.serialize())
 
