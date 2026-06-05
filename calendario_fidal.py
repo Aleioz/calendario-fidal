@@ -2,25 +2,25 @@ import requests
 from bs4 import BeautifulSoup
 from ics import Calendar, Event
 from datetime import datetime
-import time
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 calendar = Calendar()
 conteggio_totale = 0
 
-# Controlliamo singolarmente i mesi stabili (6=Giugno, 7=Luglio, 9=Settembre, 10=Ottobre)
-mesi_da_controllare = ["6", "7", "9", "10"]
+# Lista degli URL scritti per esteso e completi al 100%
+urls = [
+    "https://fidal.it",
+    "https://fidal.it",
+    "https://fidal.it",
+    "https://fidal.it"
+]
 
 PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "giovanili", "coni", "provinciali"]
 ESCLUSIONI = ["master", "assoluti", "promesse"]
 
-print("Avvio estrazione mensile dal database FIDAL Toscana...")
+print("Avvio estrazione...")
 
-for m in mesi_da_controllare:
-    # URL scritti in modo fisso e lineare senza variabili nascoste
-    url = "https://fidal.it" + m
-    print("Lettura mese numero: " + m)
-    
+for url in urls:
     try:
         response = requests.get(url, headers=headers, timeout=15)
         response.encoding = 'utf-8'
@@ -30,10 +30,10 @@ for m in mesi_da_controllare:
         for riga in righe:
             colonne = riga.find_all('td')
             if len(colonne) >= 4:
-                data_testo = colonne[0].text.strip()
-                titolo = colonne[2].text.strip()
-                tipo_gara = colonne[3].text.strip().lower()
-                luogo = colonne[4].text.strip() if len(colonne) > 4 else ""
+                data_testo = colonne.text.strip()
+                titolo = colonne.text.strip()
+                tipo_gara = colonne.text.strip().lower()
+                luogo = colonne.text.strip() if len(colonne) > 4 else ""
                 
                 if "strada" in tipo_gara or "trail" in tipo_gara or "montagna" in tipo_gara:
                     continue 
@@ -50,7 +50,7 @@ for m in mesi_da_controllare:
                     
                 try:
                     if "-" in data_testo:
-                        giorno_inizio = data_testo.split("-")[0]
+                        giorno_inizio = data_testo.split("-")
                         mese_estratto = data_testo.split("/")[-1]
                         data_pulita = giorno_inizio + "/" + mese_estratto + "/2026"
                     else:
@@ -69,11 +69,10 @@ for m in mesi_da_controllare:
                     conteggio_totale += 1
                 except:
                     continue
-        time.sleep(0.5)
     except Exception as e:
         print("Errore rete: " + str(e))
 
 with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
     f.write(calendar.serialize())
 
-print("\n[SUCCESSO] Calendario creato! Trovate " + str(conteggio_totale) + " gari totali.")
+print("\n[SUCCESSO] Calendario creato! Trovate " + str(conteggio_totale) + " gare totali.")
