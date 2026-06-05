@@ -2,37 +2,38 @@ from pypdf import PdfReader
 from ics import Calendar, Event
 from datetime import datetime
 import os
+import re
 
 calendar = Calendar()
 conteggio = 0
 
-# ✅ apri PDF
-reader = PdfReader("calendario estivo.pdf")
+# ✅ apre PDF (assicurati che sia nel repo)
+reader = PdfReader("BOZZA calendario estivo Toscana 2026.pdf")
 
-# ✅ estrai tutto il testo
 testo = ""
 
+# ✅ estrai testo da tutte le pagine
 for pagina in reader.pages:
     testo += pagina.extract_text() + "\n"
 
-# ✅ stampa parte testo per debug
-print(testo[:2000])
-
-# ✅ SPLIT per righe
+# ✅ divide in righe
 righe = testo.split("\n")
+
+# ✅ categorie giovanili
+CATEGORIE_OK = ["ragazzi", "cadetti", "allievi", "juniores", "esordienti"]
 
 for riga in righe:
     try:
         riga_lower = riga.lower()
 
-        # filtro minimo (giovanili)
-        if not any(x in riga_lower for x in ["ragazzi", "cadetti", "allievi", "juniores", "esordienti"]):
+        # ✅ filtro giovanili
+        if not any(cat in riga_lower for cat in CATEGORIE_OK):
             continue
 
-        # cerca una data base (es: 12-apr-26)
+        # ✅ trova data tipo 12-apr-26
         parti = riga.split()
-
         data_trovata = None
+
         for p in parti:
             if "-" in p and "26" in p:
                 data_trovata = p
@@ -41,7 +42,6 @@ for riga in righe:
         if not data_trovata:
             continue
 
-        # esempio: 12-apr-26
         giorno, mese_txt, anno = data_trovata.split("-")
 
         mesi = {
@@ -55,36 +55,3 @@ for riga in righe:
 
         data_evento = datetime.strptime(f"{giorno}/{mese}/20{anno}", "%d/%m/%Y")
 
-        # crea evento base
-        # ✅ pulizia titolo
-titolo_pulito = riga.split("  ")[-1]  # prende parte finale più leggibile
-titolo_pulito = titolo_pulito[:80]
-
-# ✅ prova a trovare città (tra parentesi tipo (FI), (PI) ecc.)
-luogo = ""
-
-import re
-match = re.search(r"\((.*?)\)", riga)
-if match:
-    luogo = match.group(1)
-
-evento = Event()
-evento.name = titolo_pulito
-evento.begin = data_evento
-evento.make_all_day()
-evento.location = luogo
-
-
-        calendar.events.add(evento)
-        conteggio += 1
-
-    except:
-        continue
-
-# ✅ salva calendario
-os.makedirs("docs", exist_ok=True)
-
-with open("docs/calendario_toscana.ics", "w", encoding="utf-8") as f:
-    f.writelines(calendar)
-
-print(f"✅ Creati {conteggio} eventi base")
