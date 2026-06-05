@@ -4,6 +4,7 @@ from ics import Calendar, Event
 from datetime import datetime
 import re
 import time
+import os
 
 ANNO = "2026"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
@@ -12,13 +13,12 @@ conteggio_totale = 0
 
 PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "u20", "u16", "u14", "coni", "giovanili", "provinciali"]
 
-# Cicliamo su tutti i 12 mesi dell'anno singolarmente per forzare la FIDAL a mostrare tutto
 for mese_num in range(1, 13):
-    url = f"https://www.fidal.it/calendario.php?&id_sito=126&submit=Invia&livello=REG&new_regione=TOSCANA&anno={ANNO}&mese={mese_num}"
+    url = f"https://fidal.it{ANNO}&mese={mese_num}"
     print(f"Scraping mese {mese_num}...")
     
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=15)
         response.encoding = 'utf-8'
         soup = BeautifulSoup(response.text, 'html.parser')
         
@@ -49,7 +49,6 @@ for mese_num in range(1, 13):
                         continue
                         
                     try:
-                        # Gestione date composte (es. 12-13/09 -> prende il 12/09)
                         if "-" in data_grezza:
                             parti_data = data_grezza.split("-")
                             if "/" in parti_data[1]:
@@ -72,13 +71,19 @@ for mese_num in range(1, 13):
                             conteggio_totale += 1
                     except:
                         continue
-        time.sleep(0.5) # Pausa di sicurezza per non sovraccaricare il server
+        time.sleep(1)
     except Exception as e:
-        print(f"Errore mese {mese_num}: {e}")
+        print(f"Errore temporaneo di rete sul mese {mese_num}: {e}")
 
-with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
-    f.writelines(calendar)
-    
-print(f"\n[SUCCESSO] Analisi completata per l'intero anno!")
-print(f"Gare giovanili e su pista totali salvate nel file online: {conteggio_totale}")
+# CONTROLLO BLOCCO DI SICUREZZA: Salva il file solo se ha trovato gare reali sul sito
+if conteggio_totale > 0:
+    with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
+        f.writelines(calendar)
+    print(f"\n[SUCCESSO] Calendario aggiornato con {conteggio_totale} gare!")
+else:
+    print("\n[ATTENZIONE] Il sito FIDAL ha restituito 0 gare. Blocco l'aggiornamento per non svuotare il calendario esistente.")
+    # Se il file non esiste proprio (primo avvio), ne creiamo uno vuoto temporaneo per non far fallire GitHub
+    if not os.path.exists('calendario_toscana.ics'):
+        with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
+            f.writelines(calendar)
 
