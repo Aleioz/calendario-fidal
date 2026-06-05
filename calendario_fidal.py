@@ -1,5 +1,4 @@
-import requests
-from bs4 import BeautifulSoup
+from pypdf import PdfReader
 from ics import Calendar, Event
 from datetime import datetime
 import os
@@ -7,54 +6,71 @@ import os
 calendar = Calendar()
 conteggio = 0
 
-url = "https://www.fidal.it/calendario.php"
+# ✅ apri PDF
+reader = PdfReader("BOZZA calendario estivo Toscana 2026.pdf")
 
-headers = {'User-Agent': 'Mozilla/5.0'}
+# ✅ estrai tutto il testo
+testo = ""
 
-response = requests.get(url, headers=headers)
-soup = BeautifulSoup(response.text, "html.parser")
+for pagina in reader.pages:
+    testo += pagina.extract_text() + "\n"
 
-# ✅ trova tutte le righe
-righe = soup.find_all("tr")
+# ✅ stampa parte testo per debug
+print(testo[:2000])
+
+# ✅ SPLIT per righe
+righe = testo.split("\n")
 
 for riga in righe:
-    colonne = riga.find_all("td")
+    try:
+        riga_lower = riga.lower()
 
-    if len(colonne) >= 4:
-        try:
-            data = colonne[0].text.strip()
-            titolo = colonne[2].text.strip().lower()
-            luogo = colonne[4].text.strip() if len(colonne) > 4 else ""
-
-            # ✅ FILTRO GIOVANILI
-            if not any(x in titolo for x in ["ragazzi", "cadetti", "allievi", "juniores", "esordienti"]):
-                continue
-
-            # ✅ FILTRO TOSCANA (puoi adattarlo meglio)
-            if "tosc" not in luogo.lower():
-                continue
-
-            if "/" not in data:
-                continue
-
-            data_evento = datetime.strptime(data + "/2026", "%d/%m/%Y")
-
-            evento = Event()
-            evento.name = titolo
-            evento.begin = data_evento
-            evento.make_all_day()
-            evento.location = luogo
-
-            calendar.events.add(evento)
-            conteggio += 1
-
-        except:
+        # filtro minimo (giovanili)
+        if not any(x in riga_lower for x in ["ragazzi", "cadetti", "allievi", "juniores", "esordienti"]):
             continue
 
-# ✅ salva
+        # cerca una data base (es: 12-apr-26)
+        parti = riga.split()
+
+        data_trovata = None
+        for p in parti:
+            if "-" in p and "26" in p:
+                data_trovata = p
+                break
+
+        if not data_trovata:
+            continue
+
+        # esempio: 12-apr-26
+        giorno, mese_txt, anno = data_trovata.split("-")
+
+        mesi = {
+            "gen": "01","feb": "02","mar": "03","apr": "04","mag": "05","giu": "06",
+            "lug": "07","ago": "08","set": "09","ott": "10","nov": "11","dic": "12"
+        }
+
+        mese = mesi.get(mese_txt[:3])
+        if not mese:
+            continue
+
+        data_evento = datetime.strptime(f"{giorno}/{mese}/20{anno}", "%d/%m/%Y")
+
+        # crea evento base
+        evento = Event()
+        evento.name = riga[:100]   # nome ridotto
+        evento.begin = data_evento
+        evento.make_all_day()
+
+        calendar.events.add(evento)
+        conteggio += 1
+
+    except:
+        continue
+
+# ✅ salva calendario
 os.makedirs("docs", exist_ok=True)
 
 with open("docs/calendario_toscana.ics", "w", encoding="utf-8") as f:
     f.writelines(calendar)
 
-print(f"✅ Creati {conteggio} eventi automatici")
+print(f"✅ Creati {conteggio} eventi base")
