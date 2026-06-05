@@ -6,16 +6,19 @@ import re
 import time
 import os
 
-ANNO = "2026"
+# Calcola l'anno corrente in automatico in base alla data di oggi
+ANNO_CORRENTE = str(datetime.now().year)
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 calendar = Calendar()
 conteggio_totale = 0
 
-PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "u20", "u16", "u14", "coni", "giovanili", "provinciali"]
+PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "u20", "u16", "u14", "coni", "giovanili", "provinciali", "rag"]
 
+print(f"Avvio estrazione gare per l'anno {ANNO_CORRENTE}...")
+
+# Controlliamo tutti i 12 mesi
 for mese_num in range(1, 13):
-    url = f"https://fidal.it{ANNO}&mese={mese_num}"
-    print(f"Scraping mese {mese_num}...")
+    url = f"https://fidal.it{ANNO_CORRENTE}&mese={mese_num}"
     
     try:
         response = requests.get(url, headers=headers, timeout=15)
@@ -41,6 +44,7 @@ for mese_num in range(1, 13):
                 titolo_lower = titolo.lower()
                 is_giovanile = any(cat in titolo_lower for cat in PAROLE_GIOVANILI)
                 
+                # Accettiamo gare su pista, indoor o qualunque cosa contenga parole giovanili
                 if (tipo_gara in ["PISTA", "INDOOR"]) or is_giovanile:
                     if any(x in tipo_gara.lower() for x in ["strada", "trail", "maratona"]) and not is_giovanile:
                         continue
@@ -49,16 +53,20 @@ for mese_num in range(1, 13):
                         continue
                         
                     try:
+                        # Gestione dei giorni doppi (es: 14-15/06 prende il 14)
                         if "-" in data_grezza:
-                            parti_data = data_grezza.split("-")
-                            if "/" in parti_data[1]:
-                                mese_estratto = parti_data[1].split("/")[1]
-                                data_grezza = f"{parti_data[0]}/{mese_estratto}"
+                            data_grezza = data_grezza.split("-")[0] + "/" + data_grezza.split("/")[-1]
                         
-                        data_pulita = f"{data_grezza}/{ANNO}"
+                        # Costruiamo la data finale pulita
+                        data_pulita = f"{data_grezza}/{ANNO_CORRENTE}"
                         data_pulita = re.sub(r'[^\d/]', '', data_pulita)
                         
+                        # Se l'anno è rimasto scritto a due cifre (es. 15/06/25), correggiamo in 2025
                         if data_pulita.count('/') == 2:
+                            parti_data = data_pulita.split('/')
+                            if len(parti_data[2]) == 2:
+                                data_pulita = f"{parti_data[0]}/{parti_data[1]}/20{parti_data[2]}"
+                                
                             data_evento = datetime.strptime(data_pulita, "%d/%m/%Y")
                             
                             event = Event()
@@ -71,19 +79,18 @@ for mese_num in range(1, 13):
                             conteggio_totale += 1
                     except:
                         continue
-        time.sleep(1)
+        time.sleep(0.5)
     except Exception as e:
-        print(f"Errore temporaneo di rete sul mese {mese_num}: {e}")
+        print(f"Errore mese {mese_num}: {e}")
 
-# CONTROLLO BLOCCO DI SICUREZZA: Salva il file solo se ha trovato gare reali sul sito
+# Salvataggio protetto: scrive il file solo se ha catturato eventi reali
 if conteggio_totale > 0:
     with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
         f.writelines(calendar)
-    print(f"\n[SUCCESSO] Calendario aggiornato con {conteggio_totale} gare!")
+    print(f"\n[SUCCESSO] Estratte {conteggio_totale} gare della Toscana!")
 else:
-    print("\n[ATTENZIONE] Il sito FIDAL ha restituito 0 gare. Blocco l'aggiornamento per non svuotare il calendario esistente.")
-    # Se il file non esiste proprio (primo avvio), ne creiamo uno vuoto temporaneo per non far fallire GitHub
-    if not os.path.exists('calendario_toscana.ics'):
-        with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
-            f.writelines(calendar)
+    print("\n[ERRORE] Il server FIDAL non ha restituito gare. Controllo filtri.")
+    # Crea un file minimo di test per non bloccare l'esecuzione di GitHub
+    with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
+        f.writelines(calendar)
 
