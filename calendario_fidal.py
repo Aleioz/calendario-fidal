@@ -17,7 +17,7 @@ ESCLUSIONI = ["master", "assoluti", "promesse"]
 print("Avvio scansione stagionale del calendario...")
 
 for mese in mesi_da_controllare:
-    url = f"https://fidal.it{ANNO}&mese={mese}"
+  url = "https://fidal.it"
     
     try:
         response = requests.get(url, headers=headers, timeout=15)
