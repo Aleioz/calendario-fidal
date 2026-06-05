@@ -36,7 +36,7 @@ for g in gare_filtrate:
     evento = Event()
     evento.name = f"{g['titolo']} ({g['categoria']})"
     evento.begin = data_evento
-    evento.end = data_evento
+    evento.make_all_day()
     evento.location = g["luogo"]
 
     calendar.events.add(evento)
