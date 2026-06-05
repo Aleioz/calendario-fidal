@@ -6,6 +6,23 @@ from datetime import datetime
 headers = {'User-Agent': 'Mozilla/5.0'}
 calendar = Calendar()
 conteggio_totale = 0
+gare_test = [
+    {"data": "12/06/2026", "titolo": "Meeting Ragazzi", "luogo": "Firenze"},
+    {"data": "15/06/2026", "titolo": "Campionati Cadetti", "luogo": "Prato"},
+    {"data": "20/06/2026", "titolo": "Trofeo Giovanile", "luogo": "Pistoia"}
+]
+
+for g in gare_test:
+    data_evento = datetime.strptime(g["data"], "%d/%m/%Y")
+
+    event = Event()
+    event.name = g["titolo"]
+    event.begin = data_evento
+    event.end = data_evento
+    event.location = g["luogo"]
+
+    calendar.events.add(event)
+    conteggio_totale += 1
 
 urls = [
     "https://www.fidal.it/calendario.php"
