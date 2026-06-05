@@ -8,7 +8,7 @@ calendar = Calendar()
 conteggio = 0
 
 # ✅ apre PDF (assicurati che sia nel repo)
-reader = PdfReader("BOZZA calendario estivo Toscana 2026.pdf")
+reader = PdfReader("calendario estivo.pdf")
 
 testo = ""
 
