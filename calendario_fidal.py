@@ -7,40 +7,36 @@ import re
 calendar = Calendar()
 conteggio = 0
 
+# ✅ nome file PDF (DEVE essere nel repo)
 reader = PdfReader("calendario estivo.pdf")
 
 testo = ""
+
+# ✅ estrai testo
 for pagina in reader.pages:
     testo += pagina.extract_text() + "\n"
 
+# ✅ dividi in righe
 righe = testo.split("\n")
 
+# ✅ categorie giovanili
 CATEGORIE_OK = ["ragazzi", "cadetti", "allievi", "juniores", "esordienti"]
 
+# ✅ mesi
 mesi = {
     "gen": "01","feb": "02","mar": "03","apr": "04","mag": "05","giu": "06",
     "lug": "07","ago": "08","set": "09","ott": "10","nov": "11","dic": "12"
 }
 
-# ✅ città Toscana (per riconoscimento serio)
-CITTA_TOSCANA = [
-    "firenze","prato","pistoia","arezzo","siena",
-    "lucca","pisa","livorno","massa","grosseto","empoli","carrara"
-]
-
 for riga in righe:
-    
+
     riga_lower = riga.lower()
 
     # ✅ filtro giovanili
     if not any(cat in riga_lower for cat in CATEGORIE_OK):
         continue
 
-    # ✅ filtro Toscana (più preciso)
-    if not any(citta in riga_lower for citta in CITTA_TOSCANA):
-        continue
-
-    # ✅ trova data
+    # ✅ cerca data tipo 12-apr-26
     parti = riga.split()
     data_trovata = None
 
@@ -61,27 +57,24 @@ for riga in righe:
 
         data_evento = datetime.strptime(f"{giorno}/{mese}/20{anno}", "%d/%m/%Y")
 
-        # ✅ TROVA CITTÀ
+        # ✅ estrai città (semplice ma efficace)
+        parole = riga.split()
         luogo = ""
-        for citta in CITTA_TOSCANA:
-            if citta in riga_lower:
-                luogo = citta.title()
+
+        for i, parola in enumerate(parole):
+            if "-" in parola and "26" in parola:
+                if i + 2 < len(parole):
+                    luogo = parole[i+2]
                 break
 
-        # ✅ PULISCI TITOLO
-        # prendi solo parte dopo città o dopo data
-        titolo = riga
-
-        # elimina data iniziale
-        titolo = re.sub(r"^\S+\s+\S+\s+", "", titolo)
-
-        # accorcia
+        # ✅ titolo corto e leggibile
+        titolo = " ".join(parole[3:10])
         titolo = titolo.strip()
 
         if len(titolo) > 80:
             titolo = titolo[:80]
 
-        # ✅ CREA EVENTO
+        # ✅ crea evento
         evento = Event()
         evento.name = titolo
         evento.begin = data_evento
@@ -94,10 +87,10 @@ for riga in righe:
     except:
         continue
 
-# ✅ SALVA
+# ✅ salva calendario
 os.makedirs("docs", exist_ok=True)
 
 with open("docs/calendario_toscana.ics", "w", encoding="utf-8") as f:
     f.writelines(calendar)
 
-print(f"✅ Creati {conteggio} eventi puliti e filtrati")
+print(f"✅ Creati {conteggio} eventi dal PDF")
