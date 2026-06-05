@@ -75,7 +75,7 @@ for mese_num in range(1, 13):
                         event.name = f"[{tipo_gara if tipo_gara else 'GARA'}] {titolo}"
                         event.begin = data_evento
                         if luogho := luogo:
-                            event.location = luogho
+                            event.location = luogo
                         event.make_all_day()
                         calendar.events.add(event)
                         conteggio_totale += 1
