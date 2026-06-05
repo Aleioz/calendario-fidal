@@ -2,77 +2,72 @@ import requests
 from bs4 import BeautifulSoup
 from ics import Calendar, Event
 from datetime import datetime
+import re
 
 ANNO = "2026"
+# URL annuale corretto inserito direttamente
+url = "https://fidal.it"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+
 calendar = Calendar()
 conteggio_totale = 0
-
-# Definiamo i mesi da controllare usando una lista classica (6=Giugno, 7=Luglio, 9=Settembre, 10=Ottobre)
-mesi_da_controllare = list((6, 7, 9, 10))
 
 PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "giovanili", "coni", "provinciali"]
 ESCLUSIONI = ["master", "assoluti", "promesse"]
 
-print("Avvio scansione stagionale del calendario...")
+print("Avvio connessione al database FIDAL Toscana...")
 
-for mese in mesi_da_controllare:
-  url = "https://fidal.it"
+try:
+    response = requests.get(url, headers=headers, timeout=15)
+    response.encoding = 'utf-8'
+    soup = BeautifulSoup(response.text, 'html.parser')
     
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        response.encoding = 'utf-8'
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        righe = soup.find_all('tr')
-        for riga in righe:
-            colonne = riga.find_all('td')
-            # Controlliamo che la riga contenga le colonne giuste dei dati FIDAL
-            if len(colonne) >= 4:
-                data_testo = colonne[0].text.strip()
-                titolo = colonne[2].text.strip()
-                tipo_gara = colonne[3].text.strip().lower()
-                luogo = colonne[4].text.strip() if len(colonne) > 4 else ""
+    righe = soup.find_all('tr')
+    for riga in righe:
+        colonne = riga.find_all('td')
+        if len(colonne) >= 4:
+            data_testo = colonne[0].text.strip()
+            titolo = colonne[2].text.strip()
+            tipo_gara = colonne[3].text.strip().lower()
+            luogo = colonne[4].text.strip() if len(colonne) > 4 else ""
+            
+            if "strada" in tipo_gara or "trail" in tipo_gara or "montagna" in tipo_gara:
+                continue 
                 
-                if "strada" in tipo_gara or "trail" in tipo_gara or "montagna" in tipo_gara:
-                    continue 
-                    
-                titolo_lower = titolo.lower()
-                contiene_giovanili = any(cat in titolo_lower for cat in PAROLE_GIOVANILI)
-                contiene_esclusioni = any(esc in titolo_lower for esc in ESCLUSIONI)
+            titolo_lower = titolo.lower()
+            contiene_giovanili = any(cat in titolo_lower for cat in PAROLE_GIOVANILI)
+            contiene_esclusioni = any(esc in titolo_lower for esc in ESCLUSIONI)
+            
+            if contiene_esclusioni and not contiene_giovanili:
+                continue
                 
-                if contiene_esclusioni and not contiene_giovanili:
-                    continue
+            if not data_testo or "/" not in data_testo:
+                continue
+                
+            try:
+                if "-" in data_testo:
+                    giorno_inizio = data_testo.split("-")[0]
+                    mese_estratto = data_testo.split("/")[-1]
+                    data_pulita = f"{giorno_inizio}/{mese_estratto}/{ANNO}"
+                else:
+                    data_pulita = f"{data_testo}/{ANNO}"
                     
-                if not data_testo or "/" not in data_testo:
-                    continue
-                    
-                try:
-                    # Gestione dei giorni doppi (es. "13-14/06" -> prende solo "13/06")
-                    if "-" in data_testo:
-                        giorno_inizio = data_testo.split("-")[0]
-                        mese_estratto = data_testo.split("/")[-1]
-                        data_pulita = f"{giorno_inizio}/{mese_estratto}/{ANNO}"
-                    else:
-                        data_pulita = f"{data_testo}/{ANNO}"
-                        
-                    data_evento = datetime.strptime(data_pulita, "%d/%m/%Y")
-                    
-                    event = Event()
-                    event.name = f"[{tipo_gara.upper()}] {titolo}"
-                    event.begin = data_evento
-                    if luogo:
-                        event.location = luogo
-                    event.make_all_day()
-                    
-                    calendar.events.add(event)
-                    conteggio_totale += 1
-                except:
-                    continue
-    except Exception as e:
-        print(f"Errore durante la lettura del mese {mese}: {e}")
+                data_evento = datetime.strptime(data_pulita, "%d/%m/%Y")
+                
+                event = Event()
+                event.name = f"[{tipo_gara.upper()}] {titolo}"
+                event.begin = data_evento
+                if luogo:
+                    event.location = luogo
+                event.make_all_day()
+                
+                calendar.events.add(event)
+                conteggio_totale += 1
+            except:
+                continue
+except Exception as e:
+    print(f"Errore di rete: {e}")
 
-# Scrittura finale corretta del file .ics
 with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
     f.write(calendar.serialize())
 
