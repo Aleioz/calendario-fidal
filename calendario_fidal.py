@@ -56,10 +56,24 @@ for riga in righe:
         data_evento = datetime.strptime(f"{giorno}/{mese}/20{anno}", "%d/%m/%Y")
 
         # crea evento base
-        evento = Event()
-        evento.name = riga[:100]   # nome ridotto
-        evento.begin = data_evento
-        evento.make_all_day()
+        # ✅ pulizia titolo
+titolo_pulito = riga.split("  ")[-1]  # prende parte finale più leggibile
+titolo_pulito = titolo_pulito[:80]
+
+# ✅ prova a trovare città (tra parentesi tipo (FI), (PI) ecc.)
+luogo = ""
+
+import re
+match = re.search(r"\((.*?)\)", riga)
+if match:
+    luogo = match.group(1)
+
+evento = Event()
+evento.name = titolo_pulito
+evento.begin = data_evento
+evento.make_all_day()
+evento.location = luogo
+
 
         calendar.events.add(evento)
         conteggio += 1
