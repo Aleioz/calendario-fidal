@@ -4,23 +4,22 @@ from ics import Calendar, Event
 from datetime import datetime
 import time
 
-ANNO = "2026"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 calendar = Calendar()
 conteggio_totale = 0
 
-# Definiamo i mesi come testo normale per evitare che la chat li cancelli
-mesi_testo = "6,7,9,10"
-mesi_da_controllare = mesi_testo.split(",")
+# Controlliamo singolarmente i mesi stabili (6=Giugno, 7=Luglio, 9=Settembre, 10=Ottobre)
+mesi_da_controllare = ["6", "7", "9", "10"]
 
 PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "giovanili", "coni", "provinciali"]
 ESCLUSIONI = ["master", "assoluti", "promesse"]
 
 print("Avvio estrazione mensile dal database FIDAL Toscana...")
 
-for mese in mesi_da_controllare:
-    url = f"https://fidal.it{ANNO}&mese={mese}"
-    print(f"Lettura mese numero: {mese}")
+for m in mesi_da_controllare:
+    # URL scritti in modo fisso e lineare senza variabili nascoste
+    url = "https://fidal.it" + m
+    print("Lettura mese numero: " + m)
     
     try:
         response = requests.get(url, headers=headers, timeout=15)
@@ -53,14 +52,14 @@ for mese in mesi_da_controllare:
                     if "-" in data_testo:
                         giorno_inizio = data_testo.split("-")[0]
                         mese_estratto = data_testo.split("/")[-1]
-                        data_pulita = f"{giorno_inizio}/{mese_estratto}/{ANNO}"
+                        data_pulita = giorno_inizio + "/" + mese_estratto + "/2026"
                     else:
-                        data_pulita = f"{data_testo}/{ANNO}"
+                        data_pulita = data_testo + "/2026"
                         
                     data_evento = datetime.strptime(data_pulita, "%d/%m/%Y")
                     
                     event = Event()
-                    event.name = f"[{tipo_gara.upper()}] {titolo}"
+                    event.name = "[" + tipo_gara.upper() + "] " + titolo
                     event.begin = data_evento
                     if luogo:
                         event.location = luogo
@@ -72,9 +71,9 @@ for mese in mesi_da_controllare:
                     continue
         time.sleep(0.5)
     except Exception as e:
-        print(f"Errore mese {mese}: {e}")
+        print("Errore rete: " + str(e))
 
 with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
     f.write(calendar.serialize())
 
-print(f"\n[SUCCESSO] Calendario creato! Trovate {conteggio_totale} gare totali.")
+print("\n[SUCCESSO] Calendario creato! Trovate " + str(conteggio_totale) + " gari totali.")
