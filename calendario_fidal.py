@@ -80,4 +80,3 @@ with open("calendario_fidal.ics", "w", encoding="utf-8") as f:
     f.writelines(calendar)
 
 print(f"\n✅ Creato file calendario_fidal.ics con {conteggio_totale} eventi")
-``
