@@ -75,8 +75,14 @@ for url in urls:
     except Exception as e:
         print(f"Errore rete: {e}")
 
-# ✅ SALVATAGGIO FILE
-with open("calendario_fidal.ics", "w", encoding="utf-8") as f:
+import os
+
+# crea la cartella docs se non esiste
+os.makedirs("docs", exist_ok=True)
+
+# salva il file dentro docs
+with open("docs/calendario_fidal.ics", "w", encoding="utf-8") as f:
     f.writelines(calendar)
 
-print(f"\n✅ Creato file calendario_fidal.ics con {conteggio_totale} eventi")
+print(f"\n✅ Creato file docs/calendario_fidal.ics con {conteggio_totale} eventi")
+``
