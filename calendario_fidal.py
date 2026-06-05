@@ -8,7 +8,7 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 calendar = Calendar()
 conteggio_totale = 0
 
-# Controlliamo i mesi chiave in cui si concentrano le gare: Giugno (6), Luglio (7), Settembre (9), Ottobre (10)
+# Specifichiamo i mesi da estrarre (Giugno, Luglio, Settembre, Ottobre)
 mesi_da_controllare = [6, 7, 9, 10]
 
 PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "giovanili"]
@@ -17,8 +17,7 @@ ESCLUSIONI = ["master", "assoluti", "promesse"]
 print("Avvio scansione stagionale del calendario...")
 
 for mese in mesi_da_controllare:
-    # Genera l'URL mirato per il singolo mese sul database FIDAL Toscana (id_sito=126)
-    url = f"https://www.fidal.it/calendario.php?&id_sito=126&submit=Invia&livello=REG&new_regione=TOSCANA&anno={ANNO}&mese={mese}"
+    url = f"https://fidal.it{ANNO}&mese={mese}"
     
     try:
         response = requests.get(url, headers=headers, timeout=15)
@@ -34,7 +33,6 @@ for mese in mesi_da_controllare:
                 tipo_gara = colonne[3].text.strip().lower()
                 luogo = colonne[4].text.strip() if len(colonne) > 4 else ""
                 
-                # Salta le gare podistiche senior su strada
                 if "strada" in tipo_gara or "trail" in tipo_gara or "montagna" in tipo_gara:
                     continue 
                     
@@ -49,7 +47,6 @@ for mese in mesi_da_controllare:
                     continue
                     
                 try:
-                    # Gestione dei giorni doppi (es. 13-14/06 -> prende il 13/06)
                     if "-" in data_testo:
                         giorno_inizio = data_testo.split("-")[0]
                         mese_estratto = data_testo.split("/")[-1]
@@ -72,7 +69,6 @@ for mese in mesi_da_controllare:
     except Exception as e:
         print(f"Errore durante la lettura del mese {mese}: {e}")
 
-# Scrittura finale del file unico online
 with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
     f.writelines(calendar)
 
