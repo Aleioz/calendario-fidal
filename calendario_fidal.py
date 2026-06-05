@@ -1,85 +1,79 @@
-import requests
-from bs4 import BeautifulSoup
-from ics import Calendar, Event
-from datetime import datetime
-import re
-import time
-
-ANNO_CORRENTE = "2026"
+"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-calendar = Calendar()
-conteggio_totale = 0
 
-PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "u20", "u16", "u14", "coni", "giovanili", "provinciali", "rag"]
-
-print(f"Inizio estrazione gare FIDAL Toscana...")
-
-for mese_num in range(1, 13):
-    url = f"https://fidal.it{ANNO_CORRENTE}&mese={mese_num}"
-    print(f"Controllo mese {mese_num}...")
+try:
+    print("Connessione al server FIDAL Toscana...")
+    response = requests.get(url, headers=headers)
+    response.encoding = 'utf-8'
+    soup = BeautifulSoup(response.text, 'html.parser')
     
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        response.encoding = 'utf-8'
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        righe = soup.find_all('tr')
-        for riga in righe:
-            colonne = riga.find_all('td')
-            if len(colonne) >= 3:
-                data_grezza = colonne[0].text.strip()
-                titolo = colonne[2].text.strip()
+    calendar = Calendar()
+    
+    # Parole chiave usate nei titoli del comitato Toscana
+    PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "u20", "u16", "u14", "coni"]
+    
+    righe = soup.find_all('tr')
+    conteggio_totale = 0
+    
+    for riga in righe:
+        testo_riga = riga.get_text(" | ", strip=True)
+        # Una riga valida del calendario ha la data all'inizio (es. 16/06 o 20-21/06)
+        if "|" in testo_riga and ("/" in testo_riga.split("|")[0] or "-" in testo_riga.split("|")[0]):
+            parti = [p.strip() for p in testo_riga.split("|")]
+            
+            if len(parti) >= 3:
+                data_grezza = parti[0] # Es: "16/06" o "20-21/06"
+                tipo_livello = parti[1] # Es: "R" o "P"
+                titolo = parti[2] # Es: "TROFEO CONI 2026..."
                 
+                # Estrai tipo (PISTA, INDOOR, STRADA) e luogo se presenti nelle parti successive
                 tipo_gara = ""
                 luogo = ""
-                for col in colonne[3:]:
-                    txt = col.text.strip().upper()
-                    if txt in ["PISTA", "INDOOR", "STRADA", "CROSS", "TRAIL"]:
-                        tipo_gara = txt
-                    elif "(" in txt and ")" in txt:
-                        luogo = col.text.strip()
+                for parte in parti[3:]:
+                    if parte.upper() in ["PISTA", "INDOOR", "STRADA", "CROSS", "TRAIL"]:
+                        tipo_gara = parte.upper()
+                    elif "(" in parte and ")" in parte:
+                        luogo = parte
 
+                # Applica i filtri richiesti (Tieni PISTA/INDOOR, scarta STRADA/TRAIL puri se non giovanili)
                 titolo_lower = titolo.lower()
                 is_giovanile = any(cat in titolo_lower for cat in PAROLE_GIOVANILI)
                 
+                # Se è una gara su PISTA o INDOOR, o se c'è scritto esplicitamente che è giovanile
                 if (tipo_gara in ["PISTA", "INDOOR"]) or is_giovanile:
-                    if any(x in tipo_gara.lower() for x in ["strada", "trail", "maratona"]) and not is_giovanile:
-                        continue
-                        
-                    if not data_grezza or "/" not in data_grezza:
-                        continue
-                        
+                    
+                    # Pulizia data per eventi singoli o di due giorni (es: "20-21/06" prende il 20)
                     try:
-                        # Gestione corretta dei giorni doppi (es. "14-15/06" -> prende solo "14/06")
-                        if "-" in data_grezza:
-                            parti_trattino = data_grezza.split("-")
-                            # Se la struttura è 14-15/06, estraiamo il mese "06" dal secondo pezzo
-                            if "/" in parti_trattino[1]:
-                                mese_estratto = parti_trattino[1].split("/")[-1]
-                                data_grezza = f"{parti_trattino[0]}/{mese_estratto}"
+                        giorno_mese = data_grezza
+                        if "-" in giorno_mese:
+                            giorno_inizio = giorno_mese.split("-")[0]
+                            mese = giorno_mese.split("/")[-1]
+                            # Se il trattino è prima della barra (es. 20-21/06)
+                            if "/" in giorno_mese.split("-")[1]:
+                                giorno_mese = f"{giorno_inizio}/{mese}"
                         
-                        parti_barra = data_grezza.split("/")
-                        giorno = int(re.sub(r'[^\d]', '', parti_barra[0]))
-                        mese = int(re.sub(r'[^\d]', '', parti_barra[1]))
-                        
-                        data_pulita = f"{giorno:02d}/{mese:02d}/{ANNO_CORRENTE}"
+                        data_pulita = f"{giorno_mese}/{ANNO}"
                         data_evento = datetime.strptime(data_pulita, "%d/%m/%Y")
                         
+                        # Crea l'evento nel calendario
                         event = Event()
                         event.name = f"[{tipo_gara if tipo_gara else 'GARA'}] {titolo}"
                         event.begin = data_evento
                         if luogo:
                             event.location = luogo
                         event.make_all_day()
+                        
                         calendar.events.add(event)
                         conteggio_totale += 1
                     except:
                         continue
-        time.sleep(0.2)
-    except Exception as e:
-        print(f"Errore mese {mese_num}: {e}")
 
-with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
-    f.write(calendar.serialize())
+    # Salva il file sul desktop
+    with open('calendario_toscana.ics', 'w', encoding='utf-8') as f:
+        f.writelines(calendar)
+        
+    print(f"\n[SUCCESSO] Il file 'calendario_toscana.ics' è pronto sul tuo Desktop!")
+    print(f"Gare giovanili e su pista/indoor salvate con successo: {conteggio_totale}")
 
-print(f"\n[SUCCESSO] Il file calendario_toscana.ics è stato salvato con {conteggio_totale} gare!")
+except Exception as e:
+    print(f"Errore durante l'esecuzione dello script: {e}")
