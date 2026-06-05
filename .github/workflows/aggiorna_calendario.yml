@@ -26,6 +26,6 @@ jobs:
       run: |
         git config --global user.name 'Calendar Bot'
         git config --global user.email 'bot@example.com'
-        git add calendario_toscana.ics
+        git add docs/calendario_toscana.ics
         git commit -m "Aggiornamento automatico gare FIDAL" || exit 0
         git push
