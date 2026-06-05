@@ -8,8 +8,8 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 calendar = Calendar()
 conteggio_totale = 0
 
-# Specifichiamo i mesi da estrarre (Giugno, Luglio, Settembre, Ottobre)
-mesi_da_controllare = [6, 7, 9, 10]
+# Definiamo i mesi da controllare usando una lista classica (6=Giugno, 7=Luglio, 9=Settembre, 10=Ottobre)
+mesi_da_controllare = list((6, 7, 9, 10))
 
 PAROLE_GIOVANILI = ["ragazzi", "ragazze", "cadetti", "cadette", "esordienti", "eso", "allievi", "allieve", "juniores", "giovanili"]
 ESCLUSIONI = ["master", "assoluti", "promesse"]
