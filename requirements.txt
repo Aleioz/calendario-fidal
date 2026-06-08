@@ -2,3 +2,5 @@ requests
 beautifulsoup4
 ics
 pypdf
+pandas
+openpyxl
