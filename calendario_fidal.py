@@ -2,25 +2,28 @@ from pypdf import PdfReader
 from ics import Calendar, Event
 from datetime import datetime
 import os
-import re
 
 calendar = Calendar()
 conteggio = 0
 
-# ✅ nome file PDF (DEVE essere nel repo)
+# ✅ leggi PDF
 reader = PdfReader("calendario estivo.pdf")
 
 testo = ""
-
-# ✅ estrai testo
 for pagina in reader.pages:
     testo += pagina.extract_text() + "\n"
 
-# ✅ dividi in righe
 righe = testo.split("\n")
 
-# ✅ categorie giovanili
+# ✅ categorie GIUSTE
 CATEGORIE_OK = ["ragazzi", "cadetti", "allievi", "juniores", "esordienti"]
+
+# ✅ città Toscana (chiave per filtro serio)
+CITTA_TOSCANA = [
+    "firenze","prato","pistoia","arezzo","siena",
+    "lucca","pisa","livorno","massa","grosseto",
+    "empoli","carrara","monsummano","grosseto"
+]
 
 # ✅ mesi
 mesi = {
@@ -32,11 +35,21 @@ for riga in righe:
 
     riga_lower = riga.lower()
 
-    # ✅ filtro giovanili
+    # ✅ 1. filtro categorie giovanili
     if not any(cat in riga_lower for cat in CATEGORIE_OK):
         continue
 
-    # ✅ cerca data tipo 12-apr-26
+    # ✅ 2. filtro regione Toscana (basato su città)
+    if not any(citta in riga_lower for citta in CITTA_TOSCANA):
+        continue
+
+    # ✅ 3. escludi gare inutili
+    if "master" in riga_lower:
+        continue
+    if "internaz" in riga_lower:
+        continue
+
+    # ✅ trova data (es: 15-mar-26)
     parti = riga.split()
     data_trovata = None
 
@@ -57,26 +70,32 @@ for riga in righe:
 
         data_evento = datetime.strptime(f"{giorno}/{mese}/20{anno}", "%d/%m/%Y")
 
-        # ✅ estrai città (semplice ma efficace)
-        parole = riga.split()
+        # ✅ estrai città
         luogo = ""
-
-        for i, parola in enumerate(parole):
-            if "-" in parola and "26" in parola:
-                if i + 2 < len(parole):
-                    luogo = parole[i+2]
+        for parola in parti:
+            if parola.lower() in CITTA_TOSCANA:
+                luogo = parola.title()
                 break
 
-        # ✅ titolo corto e leggibile
-        titolo = " ".join(parole[3:10])
-        titolo = titolo.strip()
+        # ✅ titolo professionale
+        # togli parte iniziale (data + giorno)
+        titolo = " ".join(parti[2:])
 
-        if len(titolo) > 80:
-            titolo = titolo[:80]
+        # pulizia parole inutili
+        titolo = titolo.replace("reg.le", "").replace("pista", "Pista")
+        titolo = titolo.replace("strada", "Strada")
+
+        # accorcia titolo
+        if len(titolo) > 70:
+            titolo = titolo[:70]
+
+        # aggiungi città nel titolo
+        if luogo:
+            titolo = f"{titolo} – {luogo}"
 
         # ✅ crea evento
         evento = Event()
-        evento.name = titolo
+        evento.name = titolo.strip()
         evento.begin = data_evento
         evento.make_all_day()
         evento.location = luogo
@@ -93,4 +112,4 @@ os.makedirs("docs", exist_ok=True)
 with open("docs/calendario_toscana.ics", "w", encoding="utf-8") as f:
     f.writelines(calendar)
 
-print(f"✅ Creati {conteggio} eventi dal PDF")
+print(f"✅ Creati {conteggio} eventi filtrati PRO")
