@@ -19,4 +19,4 @@ print("Righe trovate:", len(righe))
 
 for riga in righe[:10]:
     print(riga.get_text(" ", strip=True))
-``
+
