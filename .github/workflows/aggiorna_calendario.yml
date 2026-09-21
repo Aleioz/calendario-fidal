@@ -20,7 +20,7 @@ jobs:
       run: pip install -r requirements.txt
        
     - name: Esegui Script
-      run: python calendario_fidal.py
+      run: python test_fidal.py
        
     - name: Salva e Aggiorna il file .ics su GitHub
       run: |
