@@ -10,16 +10,16 @@ calendar = Calendar()
 ANNO = 2026
 
 PAROLE_GIOVANILI = [
-"esordienti",
-"ragazzi",
-"ragazze",
-"cadetti",
-"cadette",
-"allievi",
-"allieve",
-"juniores"
+    "esordienti",
+    "ragazzi",
+    "ragazze",
+    "cadetti",
+    "cadette",
+    "allievi",
+    "allieve",
+    "juniores"
 ]
- 
+
 ESCLUSIONI = [
 "master"
 ]
