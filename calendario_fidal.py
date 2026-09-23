@@ -75,7 +75,7 @@ for mese in range(1, 13):
                 giorno
             )
             
-print(testo)
+            print(testo)
 
             evento = Event()
             evento.name = testo[:120]
