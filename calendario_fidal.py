@@ -74,6 +74,8 @@ for mese in range(1, 13):
                 mese_evento,
                 giorno
             )
+            
+print(testo)
 
             evento = Event()
             evento.name = testo[:120]
