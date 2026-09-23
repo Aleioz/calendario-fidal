@@ -1,98 +1,113 @@
-from pypdf import PdfReader
+import requests
+from bs4 import BeautifulSoup
 from ics import Calendar, Event
 from datetime import datetime
 import os
 import re
-
+ 
 calendar = Calendar()
-conteggio = 0
-
-reader = PdfReader("calendario estivo.pdf")
-
-testo = ""
-for pagina in reader.pages:
-    testo += pagina.extract_text() + "\n"
-
-righe = testo.split("\n")
-
-CATEGORIE_OK = ["ragazzi", "cadetti", "allievi", "juniores", "esordienti"]
-
-mesi = {
-    "gen": "01","feb": "02","mar": "03","apr": "04","mag": "05","giu": "06",
-    "lug": "07","ago": "08","set": "09","ott": "10","nov": "11","dic": "12"
-}
-
+ 
+ANNO = 2026
+ 
+PAROLE_GIOVANILI = [
+"esordienti",
+"ragazzi",
+"ragazze",
+"cadetti",
+"cadette",
+"allievi",
+"allieve",
+"juniores"
+]
+ 
+ESCLUSIONI = [
+"master"
+]
+ 
+mesi_trovati = 0
+ 
+for mese in range(1, 13):
+ 
+url = (
+f"https://www.fidal.it/calendario.php?"
+f"&id_sito=126"
+f"&submit=Invia"
+f"&livello=REG"
+f"&new_regione=TOSCANA"
+f"&anno={ANNO}"
+f"&mese={mese}"
+)
+ 
+print("Leggo:", url)
+ 
+html = requests.get(
+url,
+headers={"User-Agent": "Mozilla/5.0"},
+timeout=30
+).text
+ 
+soup = BeautifulSoup(html, "html.parser")
+ 
+righe = soup.find_all("tr")
+ 
+print("Righe trovate:", len(righe))
+ 
 for riga in righe:
-
-    riga_lower = riga.lower()
-
-    # ✅ filtro categorie giovanili
-    if not any(cat in riga_lower for cat in CATEGORIE_OK):
-        continue
-
-    # ✅ escludi roba inutile
-    if "master" in riga_lower or "internaz" in riga_lower:
-        continue
-
-    parti = riga.split()
-    data_trovata = None
-
-    for p in parti:
-        if "-" in p and "26" in p:
-            data_trovata = p
-            break
-
-    if not data_trovata:
-        continue
-
-    try:
-        giorno, mese_txt, anno = data_trovata.split("-")
-        mese = mesi.get(mese_txt[:3])
-
-        if not mese:
-            continue
-
-        data_evento = datetime.strptime(f"{giorno}/{mese}/20{anno}", "%d/%m/%Y")
-
-        # ✅ TROVA CITTÀ (prima parola tutta maiuscola dopo la data)
-        luogo = ""
-        for p in parti:
-            if p.isupper() and len(p) > 3:
-                luogo = p.title()
-                break
-
-        # ✅ CREA TITOLO PROFESSIONALE
-
-        testo_pulito = " ".join(parti[3:])
-
-        # pulizia parole inutili
-        testo_pulito = re.sub(r"\b(reg\.le|inter\.le|naz\.le)\b", "", testo_pulito, flags=re.IGNORECASE)
-        testo_pulito = testo_pulito.replace("  ", " ")
-
-        # riduci lunghezza
-        testo_pulito = testo_pulito.strip()[:70]
-
-        # titolo finale
-        if luogo:
-            titolo = f"{testo_pulito} – {luogo}"
-        else:
-            titolo = testo_pulito
-
-        evento = Event()
-        evento.name = titolo
-        evento.begin = data_evento
-        evento.make_all_day()
-        evento.location = luogo
-
-        calendar.events.add(evento)
-        conteggio += 1
-
-    except:
-        continue
-
+ 
+testo = riga.get_text(" ", strip=True)
+ 
+if not testo:
+continue
+ 
+testo_lower = testo.lower()
+ 
+# filtro giovanili
+if not any(x in testo_lower for x in PAROLE_GIOVANILI):
+continue
+ 
+# escludi master
+if any(x in testo_lower for x in ESCLUSIONI):
+continue
+ 
+# cerca data
+data_match = re.match(r"(\d{2})/(\d{2})", testo)
+ 
+if not data_match:
+continue
+ 
+try:
+ 
+giorno = int(data_match.group(1))
+mese_num = int(data_match.group(2))
+ 
+data_evento = datetime(
+ANNO,
+mese_num,
+giorno
+)
+ 
+evento = Event()
+ 
+evento.name = testo[:120]
+ 
+evento.begin = data_evento
+ 
+evento.make_all_day()
+ 
+calendar.events.add(evento)
+ 
+mesi_trovati += 1
+ 
+except:
+continue
+ 
 os.makedirs("docs", exist_ok=True)
-
-with open("docs/calendario_toscana.ics", "w", encoding="utf-8") as f:
-    f.writelines(calendar)
-
-print(f"✅ Creati {conteggio} eventi professionali")
+ 
+with open(
+"docs/calendario_toscana.ics",
+"w",
+encoding="utf-8"
+) as f:
+f.writelines(calendar)
+ 
+print("Eventi creati:", mesi_trovati)
