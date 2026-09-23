@@ -121,12 +121,28 @@ for mese in range(1, 13):
 
             eventi_gia_inseriti.add(chiave)
 
-            evento = Event()
-            evento.name = titolo[:150]
-            evento.begin = data_evento
-            evento.make_all_day()
+            # località
+location_match = re.search(r"([A-Za-zÀ-ÿ\s]+)\s+\([A-Z]{2}\)$", titolo)
 
-            calendar.events.add(evento)
+localita = ""
+
+if location_match:
+    localita = location_match.group(1).strip()
+
+    titolo = titolo.replace(
+        location_match.group(0),
+        ""
+    ).strip()
+
+evento = Event()
+evento.name = titolo[:150]
+evento.begin = data_evento
+evento.make_all_day()
+
+if localita:
+    evento.location = localita
+
+calendar.events.add(evento)
 
             eventi_creati += 1
 
