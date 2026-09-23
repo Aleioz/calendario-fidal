@@ -29,7 +29,12 @@ mesi_trovati = 0
 for mese in range(1, 13):
  
 url = (
-f"https://www.fidal.it/calendario.php?"
+f"<a href="https://www.fidal.it/calendario.php?" ...
+fare:
+ 
+```python
+url = (
+"https://www.fidal.it/calendario.php?"
 f"&id_sito=126"
 f"&submit=Invia"
 f"&livello=REG"
