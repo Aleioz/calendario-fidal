@@ -121,6 +121,8 @@ for mese in range(1, 13):
 
             eventi_gia_inseriti.add(chiave)
 
+            print(testo)
+            
             evento = Event()
             evento.name = titolo[:150]
             evento.begin = data_evento
