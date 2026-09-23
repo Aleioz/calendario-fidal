@@ -27,17 +27,15 @@ ESCLUSIONI = [
 ]
 
 # ==========================
-# CREAZIONE CALENDARIO
+# CALENDARIO
 # ==========================
 
 calendar = Calendar()
 eventi_creati = 0
-
-# Per evitare duplicati
 eventi_gia_inseriti = set()
 
 # ==========================
-# LETTURA CALENDARIO FIDAL
+# LETTURA FIDAL TOSCANA
 # ==========================
 
 for mese in range(1, 13):
@@ -76,11 +74,11 @@ for mese in range(1, 13):
         testo_lower = testo.lower()
 
         # filtro categorie giovanili
-        if not any(x in testo_lower for x in PAROLE_GIOVANILI):
+        if not any(cat in testo_lower for cat in PAROLE_GIOVANILI):
             continue
 
         # escludi master
-        if any(x in testo_lower for x in ESCLUSIONI):
+        if any(exc in testo_lower for exc in ESCLUSIONI):
             continue
 
         # cerca data iniziale tipo 17/01
@@ -100,17 +98,34 @@ for mese in range(1, 13):
                 giorno
             )
 
-            # titolo pulito
+            # elimina data e livello "R"
             parti = testo.split()
+
+            titolo = testo
 
             if len(parti) > 2:
                 titolo = " ".join(parti[2:])
-            else:
-                titolo = testo
 
             titolo = titolo.strip()
 
-            # elimina duplicati
+            # estrazione località
+            localita = ""
+
+            match_localita = re.search(
+                r"([A-Za-zÀ-ÿ\s'\-]+)\s+\([A-Z]{2}\)$",
+                titolo
+            )
+
+            if match_localita:
+
+                localita = match_localita.group(1).strip()
+
+                titolo = titolo.replace(
+                    match_localita.group(0),
+                    ""
+                ).strip()
+
+            # evita duplicati
             chiave = (
                 data_evento.strftime("%Y-%m-%d"),
                 titolo
@@ -121,28 +136,17 @@ for mese in range(1, 13):
 
             eventi_gia_inseriti.add(chiave)
 
-            # località
-location_match = re.search(r"([A-Za-zÀ-ÿ\s]+)\s+\([A-Z]{2}\)$", titolo)
+            # crea evento
+            evento = Event()
 
-localita = ""
+            evento.name = titolo[:150]
+            evento.begin = data_evento
+            evento.make_all_day()
 
-if location_match:
-    localita = location_match.group(1).strip()
+            if localita:
+                evento.location = localita
 
-    titolo = titolo.replace(
-        location_match.group(0),
-        ""
-    ).strip()
-
-evento = Event()
-evento.name = titolo[:150]
-evento.begin = data_evento
-evento.make_all_day()
-
-if localita:
-    evento.location = localita
-
-calendar.events.add(evento)
+            calendar.events.add(evento)
 
             eventi_creati += 1
 
