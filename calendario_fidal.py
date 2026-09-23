@@ -6,7 +6,7 @@ import os
 import re
  
 calendar = Calendar()
- 
+
 ANNO = 2026
  
 PAROLE_GIOVANILI = [
