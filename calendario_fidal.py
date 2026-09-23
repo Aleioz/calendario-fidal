@@ -1,14 +1,14 @@
-import requests
+import request
 from bs4 import BeautifulSoup
 from ics import Calendar, Event
 from datetime import datetime
 import os
 import re
- 
+
 calendar = Calendar()
 
 ANNO = 2026
- 
+
 PAROLE_GIOVANILI = [
 "esordienti",
 "ragazzi",
