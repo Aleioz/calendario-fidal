@@ -28,20 +28,7 @@ mesi_trovati = 0
  
 for mese in range(1, 13):
  
-url = (
-f"<a href="https://www.fidal.it/calendario.php?" ...
-fare:
- 
-```python
-url = (
-"https://www.fidal.it/calendario.php?"
-f"&id_sito=126"
-f"&submit=Invia"
-f"&livello=REG"
-f"&new_regione=TOSCANA"
-f"&anno={ANNO}"
-f"&mese={mese}"
-)
+url = f"https://www.fidal.it/calendario.php?&id_sito=126&submit=Invia&livello=REG&new_regione=TOSCANA&anno={ANNO}&mese={mese}"
  
 print("Leggo:", url)
  
