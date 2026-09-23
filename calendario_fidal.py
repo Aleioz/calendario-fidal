@@ -5,7 +5,9 @@ from datetime import datetime
 import os
 import re
 
-calendar = Calendar()
+# ==========================
+# CONFIGURAZIONE
+# ==========================
 
 ANNO = 2026
 
@@ -24,25 +26,45 @@ ESCLUSIONI = [
     "master"
 ]
 
+# ==========================
+# CREAZIONE CALENDARIO
+# ==========================
+
+calendar = Calendar()
 eventi_creati = 0
+
+# Per evitare duplicati
+eventi_gia_inseriti = set()
+
+# ==========================
+# LETTURA CALENDARIO FIDAL
+# ==========================
 
 for mese in range(1, 13):
 
-    url = f"https://www.fidal.it/calendario.php?&id_sito=126&submit=Invia&livello=REG&new_regione=TOSCANA&anno={ANNO}&mese={mese}"
+    url = (
+        f"https://www.fidal.it/calendario.php?"
+        f"&id_sito=126"
+        f"&submit=Invia"
+        f"&livello=REG"
+        f"&new_regione=TOSCANA"
+        f"&anno={ANNO}"
+        f"&mese={mese}"
+    )
 
-    print("Leggo:", url)
+    print(f"Leggo mese {mese}...")
 
-    html = requests.get(
+    response = requests.get(
         url,
         headers={"User-Agent": "Mozilla/5.0"},
         timeout=30
-    ).text
+    )
 
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(response.text, "html.parser")
 
     righe = soup.find_all("tr")
 
-    print("Righe trovate:", len(righe))
+    print(f"Righe trovate: {len(righe)}")
 
     for riga in righe:
 
@@ -53,32 +75,54 @@ for mese in range(1, 13):
 
         testo_lower = testo.lower()
 
+        # filtro categorie giovanili
         if not any(x in testo_lower for x in PAROLE_GIOVANILI):
             continue
 
+        # escludi master
         if any(x in testo_lower for x in ESCLUSIONI):
             continue
 
-        match = re.match(r"(\d{2})/(\d{2})", testo)
+        # cerca data iniziale tipo 17/01
+        match_data = re.match(r"(\d{2})/(\d{2})", testo)
 
-        if not match:
+        if not match_data:
             continue
 
         try:
 
-            giorno = int(match.group(1))
-            mese_evento = int(match.group(2))
+            giorno = int(match_data.group(1))
+            mese_evento = int(match_data.group(2))
 
             data_evento = datetime(
                 ANNO,
                 mese_evento,
                 giorno
             )
-            
-            print(testo)
+
+            # titolo pulito
+            parti = testo.split()
+
+            if len(parti) > 2:
+                titolo = " ".join(parti[2:])
+            else:
+                titolo = testo
+
+            titolo = titolo.strip()
+
+            # elimina duplicati
+            chiave = (
+                data_evento.strftime("%Y-%m-%d"),
+                titolo
+            )
+
+            if chiave in eventi_gia_inseriti:
+                continue
+
+            eventi_gia_inseriti.add(chiave)
 
             evento = Event()
-            evento.name = testo[:120]
+            evento.name = titolo[:150]
             evento.begin = data_evento
             evento.make_all_day()
 
@@ -89,6 +133,10 @@ for mese in range(1, 13):
         except Exception:
             continue
 
+# ==========================
+# SALVATAGGIO FILE
+# ==========================
+
 os.makedirs("docs", exist_ok=True)
 
 with open(
@@ -98,4 +146,5 @@ with open(
 ) as f:
     f.writelines(calendar)
 
-print("Eventi creati:", eventi_creati)
+print()
+print(f"✅ Eventi creati: {eventi_creati}")
