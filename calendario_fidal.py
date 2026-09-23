@@ -5,9 +5,9 @@ from datetime import datetime
 import os
 import re
 
-# ==========================
+# ==========================================
 # CONFIGURAZIONE
-# ==========================
+# ==========================================
 
 ANNO = 2026
 
@@ -26,19 +26,17 @@ ESCLUSIONI = [
     "master"
 ]
 
-# ==========================
-# CREAZIONE CALENDARIO
-# ==========================
+# ==========================================
+# INIZIALIZZAZIONE
+# ==========================================
 
 calendar = Calendar()
 eventi_creati = 0
-
-# Per evitare duplicati
 eventi_gia_inseriti = set()
 
-# ==========================
+# ==========================================
 # LETTURA CALENDARIO FIDAL
-# ==========================
+# ==========================================
 
 for mese in range(1, 13):
 
@@ -76,14 +74,14 @@ for mese in range(1, 13):
         testo_lower = testo.lower()
 
         # filtro categorie giovanili
-        if not any(x in testo_lower for x in PAROLE_GIOVANILI):
+        if not any(cat in testo_lower for cat in PAROLE_GIOVANILI):
             continue
 
         # escludi master
-        if any(x in testo_lower for x in ESCLUSIONI):
+        if any(exc in testo_lower for exc in ESCLUSIONI):
             continue
 
-        # cerca data iniziale tipo 17/01
+        # ricerca data iniziale tipo 17/01
         match_data = re.match(r"(\d{2})/(\d{2})", testo)
 
         if not match_data:
@@ -100,7 +98,7 @@ for mese in range(1, 13):
                 giorno
             )
 
-            # titolo pulito
+            # elimina data e livello "R"
             parti = testo.split()
 
             if len(parti) > 2:
@@ -110,7 +108,32 @@ for mese in range(1, 13):
 
             titolo = titolo.strip()
 
-            # elimina duplicati
+            # ==========================
+            # ESTRAZIONE LOCALITA'
+            # ==========================
+
+            localita = ""
+
+            match_localita = re.search(
+                r"([A-Za-zÀ-ÿ\s'\-]+)\s+\([A-Z]{2}\)$",
+                titolo
+            )
+
+            if match_localita:
+
+                localita = match_localita.group(1).strip()
+
+                titolo = titolo.replace(
+                    match_localita.group(0),
+                    ""
+                ).strip()
+
+            titolo = re.sub(r"\s+", " ", titolo)
+
+            # ==========================
+            # ELIMINAZIONE DUPLICATI
+            # ==========================
+
             chiave = (
                 data_evento.strftime("%Y-%m-%d"),
                 titolo
@@ -121,12 +144,18 @@ for mese in range(1, 13):
 
             eventi_gia_inseriti.add(chiave)
 
-            print(testo)
-            
+            # ==========================
+            # CREAZIONE EVENTO
+            # ==========================
+
             evento = Event()
+
             evento.name = titolo[:150]
             evento.begin = data_evento
             evento.make_all_day()
+
+            if localita:
+                evento.location = localita
 
             calendar.events.add(evento)
 
@@ -135,9 +164,9 @@ for mese in range(1, 13):
         except Exception:
             continue
 
-# ==========================
+# ==========================================
 # SALVATAGGIO FILE
-# ==========================
+# ==========================================
 
 os.makedirs("docs", exist_ok=True)
 
